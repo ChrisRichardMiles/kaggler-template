@@ -24,6 +24,7 @@ DATA_TRN := $(DIR_DATA)/train.csv
 DATA_TST := $(DIR_DATA)/test.csv
 SAMPLE_SUBMISSION := $(DIR_DATA)/sample_submission.csv
 
+# XXX: the index of the target column in $(DATA_TRN). First column is 1.
 LABEL_IDX = 25
 
 ID_TST := $(DIR_DATA)/id.tst.csv

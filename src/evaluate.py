@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-from sklearn.metrics import roc_auc_score as AUC
+from sklearn.metrics import roc_auc_score as eval_func
 import argparse
-import json
 import numpy as np
 import os
 
@@ -18,4 +17,4 @@ if __name__ == '__main__':
     y = np.loadtxt(args.target_file, delimiter=',')
 
     model_name = os.path.splitext(os.path.splitext(os.path.basename(args.predict_file))[0])[0]
-    print('{}\t{:.6f}'.format(model_name, AUC(y, p)))
+    print(f'{model_name}\t{eval_func(y, p):.6f}')

@@ -1,28 +1,20 @@
-from keras.callbacks import EarlyStopping
+import argparse
+from kaggler.data_io import load_data
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation
+from keras.layers import Dense, Dropout
 from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import PReLU
-from keras.utils import np_utils, generic_utils
-from scipy.sparse import csr_matrix, hstack
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score as AUC
-
-import argparse
 import logging
-import keras.backend as K
 import numpy as np
 import os
-import pandas as pd
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score as AUC
 import time
 
-
-from kaggler.data_io import load_data
 from const import N_FOLD, SEED
 
 
-np.random.seed(SEED) # for reproducibility
+np.random.seed(SEED)
 
 
 def batch_generator(X, y, batch_size, shuffle):
@@ -33,7 +25,7 @@ def batch_generator(X, y, batch_size, shuffle):
         np.random.shuffle(sample_index)
     while True:
         batch_index = sample_index[batch_size*counter:batch_size*(counter+1)]
-        X_batch = X[batch_index,:].toarray()
+        X_batch = X[batch_index].toarray()
         y_batch = y[batch_index]
         counter += 1
         yield X_batch, y_batch
@@ -75,7 +67,7 @@ def nn_model(dims):
     model.add(Dropout(0.2))
 
     model.add(Dense(1, kernel_initializer='he_normal', activation='sigmoid'))
-    model.compile(loss = 'binary_crossentropy', optimizer = 'adadelta')
+    model.compile(loss='binary_crossentropy', optimizer='adam')
     return(model)
 
 
@@ -113,20 +105,20 @@ def train_predict(train_file, test_file, predict_valid_file, predict_test_file,
 
         p[i_val] = clf.predict_generator(generator=batch_generatorp(X[i_val], batch_size, False),
                                          val_samples=X[i_val].shape[0])[:, 0]
-        logging.info('CV #{}: {:.4f}'.format(i, AUC(y[i_val], p[i_val])))
+        logging.info(f'CV #{i}: {AUC(y[i_val], p[i_val]):.4f}')
 
         if not retrain:
             p_tst += clf.predict_generator(generator=batch_generatorp(X_tst, batch_size, False),
                                            val_samples=X_tst.shape[0])[:, 0] / N_FOLD
 
     logging.info('Saving validation predictions...')
-    logging.info('CV: {:.4f}'.format(AUC(y, p)))
+    logging.info(f'CV: {AUC(y, p):.4f}')
     np.savetxt(predict_valid_file, p, fmt='%.6f', delimiter=',')
 
     if retrain:
         logging.info('Retraining with 100% training data')
         clf = nn_model(dims)
-        clf.fit_generator(generator=batch_generator(X, Y, batch_size, True),
+        clf.fit_generator(generator=batch_generator(X, y, batch_size, True),
                           nb_epoch=n_est)
         p_tst = clf.predict_generator(generator=batch_generatorp(X_tst, batch_size, False),
                                       val_samples=X_tst.shape[0])[:, 0]
@@ -139,13 +131,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--train-file', required=True, dest='train_file')
     parser.add_argument('--test-file', required=True, dest='test_file')
-    parser.add_argument('--predict-valid-file', required=True,
-                        dest='predict_valid_file')
-    parser.add_argument('--predict-test-file', required=True,
-                        dest='predict_test_file')
+    parser.add_argument('--predict-valid-file', required=True, dest='predict_valid_file')
+    parser.add_argument('--predict-test-file', required=True, dest='predict_test_file')
     parser.add_argument('--n-est', default=10, type=int, dest='n_est')
-    parser.add_argument('--batch-size', default=64, type=int,
-                        dest='batch_size')
+    parser.add_argument('--batch-size', default=64, type=int, dest='batch_size')
     parser.add_argument('--hiddens', default=2, type=int)
     parser.add_argument('--neurons', default=512, type=int)
     parser.add_argument('--dropout', default=0.5, type=float)
@@ -161,5 +150,4 @@ if __name__ == '__main__':
                   n_est=args.n_est,
                   batch_size=args.batch_size,
                   retrain=args.retrain)
-    logging.info('finished ({:.2f} min elasped)'.format((time.time() - start) /
-                 60.))
+    logging.info(f'finished ({(time.time() - start) / 60:.2f} min elasped)')
