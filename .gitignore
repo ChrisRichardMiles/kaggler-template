@@ -89,5 +89,5 @@ ENV/
 .ropeproject
 
 # Kaggle
-input/
+input
 .vscode/
